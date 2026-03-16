@@ -1,0 +1,116 @@
+{{!
+    Predictive Analytics Dashboard - Mustache Template
+    MoodleMoot Netherlands 2026 — Moodle Ecosystem
+    4-Factor Behavioral Risk Scoring (Login Decay / Inactivity / Submissions / Forum)
+}}
+<div class="block-predictive-analytics" data-courseid="{{courseid}}">
+    {{! Header with Moodle-style orange accent }}
+    <div class="pa-header d-flex justify-content-between align-items-center mb-3">
+        <h4 class="pa-title m-0">
+            <i class="fa fa-chart-line"></i>
+            {{#str}}pluginname, block_predictive_analytics{{/str}}
+        </h4>
+        <small class="text-muted">{{last_updated}}</small>
+    </div>
+
+    {{! Summary Cards Row — matches Slide 12 dashboard mockup }}
+    <div class="pa-summary d-flex justify-content-between mb-3 flex-wrap">
+        <div class="pa-stat-card text-center p-2 flex-fill mx-1">
+            <div class="pa-stat-number h4 mb-0 font-weight-bold">{{total_students}}</div>
+            <div class="pa-stat-label small text-uppercase">Total</div>
+        </div>
+        <div class="pa-stat-card pa-stat-danger text-center p-2 flex-fill mx-1">
+            <div class="pa-stat-number h4 mb-0 font-weight-bold text-danger">{{high_risk}}</div>
+            <div class="pa-stat-label small text-uppercase">High Risk</div>
+        </div>
+        <div class="pa-stat-card pa-stat-warning text-center p-2 flex-fill mx-1">
+            <div class="pa-stat-number h4 mb-0 font-weight-bold text-warning">{{medium_risk}}</div>
+            <div class="pa-stat-label small text-uppercase">Medium</div>
+        </div>
+        <div class="pa-stat-card pa-stat-info text-center p-2 flex-fill mx-1">
+            <div class="pa-stat-number h4 mb-0 font-weight-bold" style="color: var(--pa-primary);">{{low_risk}}</div>
+            <div class="pa-stat-label small text-uppercase">Low Risk</div>
+        </div>
+        <div class="pa-stat-card pa-stat-success text-center p-2 flex-fill mx-1">
+            <div class="pa-stat-number h4 mb-0 font-weight-bold text-success">{{on_track}}</div>
+            <div class="pa-stat-label small text-uppercase">On Track</div>
+        </div>
+    </div>
+
+    {{! Risk Factors Legend — matches Slide 8 prediction engine }}
+    <div class="d-flex justify-content-start mb-2 flex-wrap" style="gap: 6px;">
+        <span class="pa-factor-tag pa-factor-login">Login Decay (0-30)</span>
+        <span class="pa-factor-tag pa-factor-inactive">Inactivity (0-25)</span>
+        <span class="pa-factor-tag pa-factor-submission">Submissions (0-25)</span>
+        <span class="pa-factor-tag pa-factor-forum">Forum (0-20)</span>
+    </div>
+
+    {{! Student Risk Table — matches Slide 12 & 13 }}
+    {{#has_students}}
+    <div class="pa-table-wrapper" style="max-height: 400px; overflow-y: auto;">
+        <table class="table table-sm table-hover pa-risk-table mb-0">
+            <thead class="thead-light">
+                <tr>
+                    <th scope="col">Student</th>
+                    <th scope="col">Risk</th>
+                    <th scope="col">Trend</th>
+                    <th scope="col">Top Factor</th>
+                    <th scope="col">Last Active</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#students}}
+                <tr class="pa-student-row {{#is_silent_dropper}}silent-dropper{{/is_silent_dropper}}" data-userid="{{userid}}">
+                    <td>
+                        <a href="{{config.wwwroot}}/user/profile.php?id={{userid}}"
+                           class="font-weight-bold">
+                            {{fullname}}
+                        </a>
+                        {{#is_silent_dropper}}
+                        <span class="pa-factor-tag pa-factor-inactive" style="margin-left: 4px;" title="Good grades but declining engagement — Silent Dropper pattern">
+                            Silent Dropper
+                        </span>
+                        {{/is_silent_dropper}}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{risk_class}} px-2 py-1">
+                            {{risk_score}}%
+                        </span>
+                        <span class="pa-risk-bar">
+                            <span class="pa-risk-fill bg-{{risk_class}}" style="width: {{risk_score}}%;"></span>
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <i class="fa {{trend_icon}} text-{{risk_class}}"></i>
+                    </td>
+                    <td>
+                        <span class="text-muted small">{{top_factor}}</span>
+                    </td>
+                    <td>
+                        <span class="text-muted small">{{last_access}}</span>
+                    </td>
+                </tr>
+                {{/students}}
+            </tbody>
+        </table>
+    </div>
+    {{/has_students}}
+
+    {{^has_students}}
+    <div class="alert alert-info">
+        <i class="fa fa-info-circle"></i>
+        {{#str}}nostudentdata, block_predictive_analytics{{/str}}
+    </div>
+    {{/has_students}}
+
+    {{! Footer — Moodle ecosystem branding }}
+    <div class="pa-footer mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+        <small>
+            <span class="pa-moodle-badge">Moodle Analytics</span>
+            4-factor behavioral scoring via Events API
+        </small>
+        <small class="text-muted">
+            MoodleMoot NL 2026
+        </small>
+    </div>
+</div>

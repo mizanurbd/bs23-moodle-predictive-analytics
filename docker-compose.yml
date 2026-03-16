@@ -1,0 +1,53 @@
+##
+## MoodleMoot Netherlands 2026 — Demo Environment
+## AI for Learning Analytics and Predictive Insights
+## Moodle 5.0 + 4-Factor Behavioral Risk Scoring
+##
+## Usage:
+##   docker-compose up -d
+##   # Wait 3-5 minutes for first-time setup
+##   # Access at http://localhost
+##   # Login: admin / MoodleMoot2026!
+##
+
+version: '3'
+services:
+  mariadb:
+    image: bitnami/mariadb:10.11
+    environment:
+      - MARIADB_ROOT_PASSWORD=rootpassword
+      - MARIADB_USER=bn_moodle
+      - MARIADB_PASSWORD=bitnami_moodle
+      - MARIADB_DATABASE=bitnami_moodle
+      - MARIADB_CHARACTER_SET=utf8mb4
+      - MARIADB_COLLATE=utf8mb4_unicode_ci
+    volumes:
+      - mariadb_data:/bitnami/mariadb
+    restart: unless-stopped
+
+  moodle:
+    image: bitnami/moodle:5.0
+    ports:
+      - '80:8080'
+      - '443:8443'
+    environment:
+      - MOODLE_DATABASE_HOST=mariadb
+      - MOODLE_DATABASE_USER=bn_moodle
+      - MOODLE_DATABASE_PASSWORD=bitnami_moodle
+      - MOODLE_DATABASE_NAME=bitnami_moodle
+      - MOODLE_USERNAME=admin
+      - MOODLE_PASSWORD=MoodleMoot2026!
+      - MOODLE_EMAIL=mizan@brainstation-23.com
+      - MOODLE_SITE_NAME=MoodleMoot NL 2026 - Predictive Analytics Demo
+      - PHP_MEMORY_LIMIT=512M
+    volumes:
+      - moodle_data:/bitnami/moodle
+      - moodledata:/bitnami/moodledata
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+
+volumes:
+  mariadb_data:
+  moodle_data:
+  moodledata:

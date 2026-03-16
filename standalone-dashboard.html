@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predictive Analytics Dashboard — Moodle Ecosystem Demo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #F1F3F5; color: #1D2125; }
+
+  /* Moodle 5.x Boost theme colors */
+  :root {
+    --moodle-primary: #0F6CBF;
+    --moodle-orange: #F98012;
+    --moodle-accent: #1177D1;
+    --moodle-danger: #CA3120;
+    --moodle-warning: #F0AD4E;
+    --moodle-success: #357A32;
+    --moodle-info: #5BC0DE;
+    --moodle-dark: #1D2125;
+    --moodle-muted: #6A737D;
+    --moodle-light: #F1F3F5;
+    --act-assessment: #F7634D;
+    --act-content: #399BE2;
+    --act-comm: #11A676;
+    --act-interactive: #9B59B6;
+  }
+
+  .header {
+    background: var(--moodle-dark);
+    color: white;
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 4px solid var(--moodle-orange);
+  }
+  .header h1 { font-size: 1.3rem; font-weight: 600; }
+  .header h1 span { color: var(--moodle-orange); }
+  .header .brand { font-size: 0.85rem; color: #90CAF9; }
+  .header .course-badge { background: var(--moodle-primary); padding: 4px 14px; border-radius: 4px; font-size: 0.85rem; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* Factor legend bar */
+  .factor-legend {
+    display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .factor-tag {
+    display: inline-block; padding: 3px 10px; border-radius: 4px;
+    font-size: 0.72rem; font-weight: 600;
+  }
+  .factor-login { background: #E7F0FA; color: var(--moodle-primary); }
+  .factor-inactive { background: #FEF1E4; color: var(--moodle-orange); }
+  .factor-submission { background: #FEF0EE; color: var(--act-assessment); }
+  .factor-forum { background: #E7F5EF; color: var(--act-comm); }
+
+  .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: white; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .stat-card .number { font-size: 2.2rem; font-weight: 700; line-height: 1.2; }
+  .stat-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--moodle-muted); margin-top: 4px; }
+  .stat-card.danger { border-top: 3px solid var(--moodle-danger); }
+  .stat-card.danger .number { color: var(--moodle-danger); }
+  .stat-card.warning { border-top: 3px solid var(--moodle-warning); }
+  .stat-card.warning .number { color: var(--moodle-warning); }
+  .stat-card.success { border-top: 3px solid var(--moodle-success); }
+  .stat-card.success .number { color: var(--moodle-success); }
+  .stat-card.info { border-top: 3px solid var(--moodle-primary); }
+  .stat-card.info .number { color: var(--moodle-primary); }
+  .stat-card.total { border-top: 3px solid var(--moodle-dark); }
+
+  .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+  .panel { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .panel-title { font-size: 1rem; font-weight: 600; color: var(--moodle-primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--moodle-primary); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--moodle-muted); padding: 8px 10px; border-bottom: 1px solid #e0e0e0; }
+  td { padding: 10px; font-size: 0.85rem; border-bottom: 1px solid #f0f0f0; }
+  tr:hover { background: #E7F0FA; cursor: pointer; }
+  tr.selected { background: #D0E2F5; }
+  tr.silent-dropper { border-left: 3px solid var(--moodle-orange); }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+  .badge-danger { background: #FBEAE8; color: var(--moodle-danger); }
+  .badge-warning { background: #FEF1E4; color: #B8760F; }
+  .badge-success { background: #EBF3EB; color: var(--moodle-success); }
+  .badge-info { background: #E7F0FA; color: var(--moodle-primary); }
+
+  .silent-badge { background: var(--moodle-orange); color: white; font-size: 0.65rem; padding: 1px 6px; border-radius: 3px; margin-left: 6px; }
+
+  .trend-up { color: var(--moodle-danger); }
+  .trend-down { color: var(--moodle-success); }
+  .trend-stable { color: var(--moodle-warning); }
+
+  .risk-bar { display: inline-block; width: 50px; height: 6px; border-radius: 3px; background: #e0e0e0; vertical-align: middle; margin-left: 6px; }
+  .risk-fill { height: 100%; border-radius: 3px; }
+
+  .detail-section { margin-top: 12px; }
+  .detail-label { font-size: 0.7rem; text-transform: uppercase; color: var(--moodle-muted); margin-bottom: 4px; }
+  .detail-value { font-size: 0.95rem; font-weight: 600; }
+  .factor-bar { height: 6px; border-radius: 3px; background: #e0e0e0; margin-top: 4px; margin-bottom: 12px; }
+  .factor-fill { height: 100%; border-radius: 3px; }
+
+  .chart-container { height: 200px; margin-top: 16px; }
+
+  .footer {
+    text-align: center; padding: 16px; color: var(--moodle-muted); font-size: 0.75rem; margin-top: 24px;
+  }
+  .moodle-badge-footer {
+    display: inline-block; background: var(--moodle-primary); color: white;
+    padding: 2px 10px; border-radius: 3px; font-size: 0.7rem; font-weight: 600; margin-right: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1><span>&#9679;</span> Student Risk Dashboard</h1>
+    <div class="brand">Moodle Analytics — 4-Factor Behavioral Scoring via Events API</div>
+  </div>
+  <div class="course-badge">DS101: Introduction to Data Science</div>
+</div>
+
+<div class="container">
+  <!-- Factor Legend -->
+  <div class="factor-legend">
+    <span class="factor-tag factor-login">Login Decay (0-30 pts)</span>
+    <span class="factor-tag factor-inactive">Inactivity (0-25 pts)</span>
+    <span class="factor-tag factor-submission">Submissions (0-25 pts)</span>
+    <span class="factor-tag factor-forum">Forum (0-20 pts)</span>
+    <span style="margin-left: auto; font-size: 0.72rem; color: #6A737D;">Total Risk Score: 0-100</span>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card total"><div class="number" id="totalCount">200</div><div class="label">Total Students</div></div>
+    <div class="stat-card danger"><div class="number" id="highCount">31</div><div class="label">High Risk</div></div>
+    <div class="stat-card warning"><div class="number" id="medCount">39</div><div class="label">Medium Risk</div></div>
+    <div class="stat-card info"><div class="number" id="lowCount">38</div><div class="label">Low Risk</div></div>
+    <div class="stat-card success"><div class="number" id="trackCount">92</div><div class="label">On Track</div></div>
+  </div>
+
+  <div class="content-grid">
+    <div class="panel">
+      <div class="panel-title">Students by Risk Score</div>
+      <table>
+        <thead>
+          <tr><th>Student</th><th>Risk Score</th><th>Trend</th><th>Top Factor</th><th>Last Active</th></tr>
+        </thead>
+        <tbody id="studentTable"></tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="panel" id="detailPanel">
+        <div class="panel-title">Student Detail</div>
+        <div id="detailContent">
+          <p style="color: #6A737D; font-size: 0.85rem;">Click a student to view risk breakdown</p>
+        </div>
+      </div>
+      <div class="panel" style="margin-top: 16px;">
+        <div class="panel-title">Risk Distribution</div>
+        <div class="chart-container"><canvas id="riskChart"></canvas></div>
+      </div>
+      <div class="panel" style="margin-top: 16px;">
+        <div class="panel-title">Scoring Factors</div>
+        <div class="chart-container" style="height: 180px;"><canvas id="factorChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span class="moodle-badge-footer">Moodle Analytics</span>
+  MoodleMoot Netherlands 2026 — Standalone Fallback Dashboard (no Moodle instance required)
+</div>
+
+<script>
+// Synthetic student data matching the presentation's 4 behavioral profiles
+// and the 200-student DS101 course from the deck
+const students = [
+  // Silent Droppers — the key insight (Slide 13)
+  { name: "Ahmed K.", score: 91, trend: "up", factor: "Login decay -67%", factorType: "login", lastActive: "32 days ago", profile: "silent_dropper", logins: 8, quizAvg: 82, submissions: "88%", forum: 2, sessions: "12 min", loginDecay: 30, inactivity: 25, submissionGap: 16, forumScore: 20 },
+  { name: "Stijn B.", score: 84, trend: "up", factor: "Login decay -58%", factorType: "login", lastActive: "18 days ago", profile: "silent_dropper", logins: 11, quizAvg: 79, submissions: "92%", forum: 1, sessions: "14 min", loginDecay: 25, inactivity: 20, submissionGap: 19, forumScore: 20 },
+  { name: "Lotte D.", score: 72, trend: "stable", factor: "Session time -55%", factorType: "login", lastActive: "6 days ago", profile: "silent_dropper", logins: 18, quizAvg: 75, submissions: "85%", forum: 3, sessions: "18 min", loginDecay: 20, inactivity: 15, submissionGap: 22, forumScore: 15 },
+  { name: "Noa V.", score: 65, trend: "stable", factor: "Login decay -45%", factorType: "login", lastActive: "5 days ago", profile: "silent_dropper", logins: 16, quizAvg: 77, submissions: "90%", forum: 2, sessions: "16 min", loginDecay: 20, inactivity: 10, submissionGap: 20, forumScore: 15 },
+
+  // At-Risk — obvious strugglers
+  { name: "Maria L.", score: 87, trend: "up", factor: "Inactive 21 days", factorType: "inactive", lastActive: "21 days ago", profile: "at_risk", logins: 3, quizAvg: 48, submissions: "50%", forum: 0, sessions: "8 min", loginDecay: 30, inactivity: 25, submissionGap: 12, forumScore: 20 },
+  { name: "Fatima A.", score: 79, trend: "up", factor: "Submission gap 16d", factorType: "submission", lastActive: "16 days ago", profile: "at_risk", logins: 5, quizAvg: 52, submissions: "38%", forum: 0, sessions: "6 min", loginDecay: 20, inactivity: 25, submissionGap: 14, forumScore: 20 },
+  { name: "Jan V.", score: 73, trend: "up", factor: "Forum disengaged", factorType: "forum", lastActive: "12 days ago", profile: "at_risk", logins: 9, quizAvg: 61, submissions: "63%", forum: 0, sessions: "11 min", loginDecay: 15, inactivity: 18, submissionGap: 20, forumScore: 20 },
+  { name: "Wei C.", score: 68, trend: "stable", factor: "Quiz decline -22%", factorType: "submission", lastActive: "8 days ago", profile: "at_risk", logins: 14, quizAvg: 58, submissions: "75%", forum: 1, sessions: "15 min", loginDecay: 15, inactivity: 15, submissionGap: 18, forumScore: 20 },
+
+  // Average — middle of the pack
+  { name: "Pieter M.", score: 55, trend: "stable", factor: "Login decay -31%", factorType: "login", lastActive: "5 days ago", profile: "average", logins: 16, quizAvg: 67, submissions: "75%", forum: 2, sessions: "20 min", loginDecay: 15, inactivity: 10, submissionGap: 15, forumScore: 15 },
+  { name: "Sophie R.", score: 48, trend: "stable", factor: "Late submissions", factorType: "submission", lastActive: "4 days ago", profile: "average", logins: 19, quizAvg: 64, submissions: "70%", forum: 2, sessions: "22 min", loginDecay: 10, inactivity: 8, submissionGap: 20, forumScore: 10 },
+  { name: "Noah J.", score: 41, trend: "down", factor: "Quiz slight decline", factorType: "submission", lastActive: "3 days ago", profile: "average", logins: 22, quizAvg: 69, submissions: "80%", forum: 4, sessions: "25 min", loginDecay: 10, inactivity: 5, submissionGap: 16, forumScore: 10 },
+  { name: "Daan W.", score: 35, trend: "down", factor: "Forum low activity", factorType: "forum", lastActive: "2 days ago", profile: "average", logins: 25, quizAvg: 72, submissions: "85%", forum: 3, sessions: "28 min", loginDecay: 5, inactivity: 5, submissionGap: 15, forumScore: 10 },
+
+  // Strong — on track
+  { name: "Emma S.", score: 22, trend: "down", factor: "All metrics stable", factorType: "none", lastActive: "1 day ago", profile: "strong", logins: 38, quizAvg: 88, submissions: "95%", forum: 8, sessions: "42 min", loginDecay: 5, inactivity: 2, submissionGap: 10, forumScore: 5 },
+  { name: "Finn H.", score: 18, trend: "down", factor: "All metrics stable", factorType: "none", lastActive: "Today", profile: "strong", logins: 42, quizAvg: 91, submissions: "100%", forum: 12, sessions: "45 min", loginDecay: 3, inactivity: 0, submissionGap: 10, forumScore: 5 },
+  { name: "Sara P.", score: 14, trend: "down", factor: "All metrics stable", factorType: "none", lastActive: "Today", profile: "strong", logins: 35, quizAvg: 85, submissions: "95%", forum: 6, sessions: "38 min", loginDecay: 2, inactivity: 2, submissionGap: 5, forumScore: 5 },
+  { name: "Lucas G.", score: 8, trend: "down", factor: "All metrics stable", factorType: "none", lastActive: "Today", profile: "strong", logins: 44, quizAvg: 93, submissions: "100%", forum: 15, sessions: "50 min", loginDecay: 0, inactivity: 0, submissionGap: 3, forumScore: 5 },
+];
+
+function getBadgeClass(score) {
+  if (score >= 75) return "badge-danger";
+  if (score >= 50) return "badge-warning";
+  if (score >= 25) return "badge-info";
+  return "badge-success";
+}
+
+function getRiskColor(score) {
+  if (score >= 75) return "var(--moodle-danger)";
+  if (score >= 50) return "var(--moodle-warning)";
+  if (score >= 25) return "var(--moodle-primary)";
+  return "var(--moodle-success)";
+}
+
+function getTrendHTML(trend) {
+  if (trend === "up") return '<span class="trend-up">&#9650; Rising</span>';
+  if (trend === "down") return '<span class="trend-down">&#9660; Falling</span>';
+  return '<span class="trend-stable">&#9654; Stable</span>';
+}
+
+function getFactorTagClass(type) {
+  const map = { login: "factor-login", inactive: "factor-inactive", submission: "factor-submission", forum: "factor-forum" };
+  return map[type] || "";
+}
+
+function renderTable() {
+  const tbody = document.getElementById("studentTable");
+  tbody.innerHTML = students.map((s, i) => `
+    <tr onclick="showDetail(${i})" id="row-${i}" class="${s.profile === 'silent_dropper' ? 'silent-dropper' : ''}">
+      <td>
+        <strong>${s.name}</strong>
+        ${s.profile === 'silent_dropper' ? '<span class="silent-badge" title="Good grades but declining engagement">Silent Dropper</span>' : ''}
+      </td>
+      <td>
+        <span class="badge ${getBadgeClass(s.score)}">${s.score}%</span>
+        <span class="risk-bar"><span class="risk-fill" style="width:${s.score}%;background:${getRiskColor(s.score)}"></span></span>
+      </td>
+      <td>${getTrendHTML(s.trend)}</td>
+      <td><span class="factor-tag ${getFactorTagClass(s.factorType)}" style="font-size:0.72rem">${s.factor}</span></td>
+      <td style="color:#6A737D;font-size:0.8rem">${s.lastActive}</td>
+    </tr>
+  `).join("");
+}
+
+function showDetail(index) {
+  document.querySelectorAll("tr.selected").forEach(r => r.classList.remove("selected"));
+  document.getElementById("row-" + index).classList.add("selected");
+
+  const s = students[index];
+  const factorColor = getRiskColor(s.score);
+
+  document.getElementById("detailContent").innerHTML = `
+    <h3 style="margin-bottom:4px">${s.name}</h3>
+    <span class="badge ${getBadgeClass(s.score)}" style="margin-bottom:8px;display:inline-block">${s.score}% risk</span>
+    ${s.profile === 'silent_dropper' ? '<span class="silent-badge">Silent Dropper</span>' : ''}
+    <span style="color:#6A737D;font-size:0.72rem;margin-left:8px">${s.profile}</span>
+
+    <div class="detail-section">
+      <div class="detail-label">Risk Breakdown (4-Factor Model)</div>
+      <div style="margin-top: 6px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--moodle-primary)"><span>Login Decay</span><span>${s.loginDecay}/30</span></div>
+        <div class="factor-bar"><div class="factor-fill" style="width:${s.loginDecay/30*100}%;background:var(--moodle-primary)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--moodle-orange)"><span>Inactivity</span><span>${s.inactivity}/25</span></div>
+        <div class="factor-bar"><div class="factor-fill" style="width:${s.inactivity/25*100}%;background:var(--moodle-orange)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--act-assessment)"><span>Submissions</span><span>${s.submissionGap}/25</span></div>
+        <div class="factor-bar"><div class="factor-fill" style="width:${s.submissionGap/25*100}%;background:var(--act-assessment)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--act-comm)"><span>Forum</span><span>${s.forumScore}/20</span></div>
+        <div class="factor-bar"><div class="factor-fill" style="width:${s.forumScore/20*100}%;background:var(--act-comm)"></div></div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-label">Engagement Metrics (from mdl_ tables)</div>
+      <table style="margin-top:4px">
+        <tr><td style="color:#6A737D;padding:4px 8px;font-size:0.78rem">Logins/week</td><td style="font-weight:600;padding:4px 8px">${s.logins}</td></tr>
+        <tr><td style="color:#6A737D;padding:4px 8px;font-size:0.78rem">Quiz Average</td><td style="font-weight:600;padding:4px 8px">${s.quizAvg}%</td></tr>
+        <tr><td style="color:#6A737D;padding:4px 8px;font-size:0.78rem">Submissions</td><td style="font-weight:600;padding:4px 8px">${s.submissions}</td></tr>
+        <tr><td style="color:#6A737D;padding:4px 8px;font-size:0.78rem">Forum Posts</td><td style="font-weight:600;padding:4px 8px">${s.forum}/month</td></tr>
+        <tr><td style="color:#6A737D;padding:4px 8px;font-size:0.78rem">Avg Session</td><td style="font-weight:600;padding:4px 8px">${s.sessions}</td></tr>
+      </table>
+    </div>
+  `;
+}
+
+// Risk distribution doughnut chart
+const ctx = document.getElementById("riskChart").getContext("2d");
+new Chart(ctx, {
+  type: "doughnut",
+  data: {
+    labels: ["High Risk (75-100)", "Medium Risk (50-74)", "Low Risk (25-49)", "On Track (0-24)"],
+    datasets: [{
+      data: [31, 39, 38, 92],
+      backgroundColor: ["#CA3120", "#F0AD4E", "#0F6CBF", "#357A32"],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "bottom", labels: { font: { size: 10 }, padding: 10 } }
+    },
+    cutout: "55%"
+  }
+});
+
+// Factor weight chart
+const ctx2 = document.getElementById("factorChart").getContext("2d");
+new Chart(ctx2, {
+  type: "bar",
+  data: {
+    labels: ["Login Decay", "Inactivity", "Submissions", "Forum"],
+    datasets: [{
+      label: "Max Points",
+      data: [30, 25, 25, 20],
+      backgroundColor: ["#0F6CBF", "#F98012", "#F7634D", "#11A676"],
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: "y",
+    plugins: {
+      legend: { display: false }
+    },
+    scales: {
+      x: { max: 35, grid: { display: false } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+renderTable();
+</script>
+</body>
+</html>
